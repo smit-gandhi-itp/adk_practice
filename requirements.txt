@@ -1,0 +1,6 @@
+google-adk
+litellm
+pydantic
+typing_extensions
+aiosqlite
+yfinance

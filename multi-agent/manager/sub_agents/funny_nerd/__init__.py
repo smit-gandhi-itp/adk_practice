@@ -1,0 +1,1 @@
+from .agent import funny_nerd
