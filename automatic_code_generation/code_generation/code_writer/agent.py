@@ -1,24 +1,27 @@
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv , find_dotenv
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(find_dotenv())
 
-load_dotenv(PROJECT_ROOT / ".env")
+OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
 
-os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
-
-hf_model = LiteLlm(
-    "huggingface/together/deepseek-ai/DeepSeek-R1"
+ollama_llm = LiteLlm(
+    model=f"ollama_chat/{OLLAMA_MODEL}",
+    api_base=OLLAMA_API_BASE,
 )
+
+
+
 
 
 code_writer = LlmAgent(
     name="code_writer_agent",
-    model=hf_model,
+    model=ollama_llm,
     description="An agent that generates python code based on user requirements.",
     instruction="""
     You are a python code generation agent. Given a user's request, generate the appropriate code snippet.
