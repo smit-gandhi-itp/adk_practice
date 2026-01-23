@@ -173,7 +173,7 @@ async def main():
     # -----------------
     # Render System Design Document to Word
     # -----------------
-    output_word_path = "system_design_document.docx"
+    output_word_path = "system_design_document2.docx"
     render_phase3_design_to_word(system_design_document, output_word_path)
     print(f"✅ System design document rendered to Word: {output_word_path}")
 

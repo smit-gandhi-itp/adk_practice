@@ -1,6 +1,6 @@
-AGENT_DESCRIPTION = "Generates clarification questions as multi_choice only. "
-                    "The last option is 'Other'. "
-                    "Structured JSON output only."
+AGENT_DESCRIPTION = """Generates clarification questions as multi_choice only. 
+The last option is 'Other'. 
+Structured JSON output only."""
 
 AGENT_INSTRUCTION = """
 You are a clarification question generation agent.

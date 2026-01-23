@@ -14,16 +14,30 @@ You are given:
 TASK:
 Generate a COMPLETE system design document strictly matching the Phase3SystemDesign schema.
 
-RULES:
-- Populate EVERY field. Do not leave any field empty.
-- Prefer structured data over prose:
-  - Use bullet-style lists for features, goals, trade-offs, risks, and strategies.
-  - Use table schemas for database design.
-- Be realistic and implementation-ready.
-- Assume this output will be rendered into a Word document with:
-  - Headings for each section
-  - Bullet lists for arrays
-  - Tables for database schemas
+HARD RULES (MANDATORY):
+- EVERY field MUST be populated with meaningful content.
+- EMPTY ARRAYS ARE NOT ALLOWED.
+- EMPTY STRINGS ARE NOT ALLOWED.
+- EMPTY OBJECTS ARE NOT ALLOWED.
+
+MINIMUM CONTENT REQUIREMENTS:
+- Any list field MUST contain AT LEAST:
+  - 3 items for features, goals, constraints, strategies, rationale, risks
+  - 2 components in architecture
+  - 2 tables in database schemas
+  - 4 columns per table schema
+  - 3 cost items
+  - 3 test plans
+  - 3 glossary items
+  - 3 references
+- User flows MUST include at least 2 flows.
+
+STRUCTURE RULES:
+- Prefer structured, implementation-ready content.
+- Use concise bullet-style statements.
+- Database schemas must look production-realistic.
+- Cost estimates must be numerically plausible.
+- Security and compliance must be concrete (no vague language).
 
 OUTPUT FORMAT:
 - JSON ONLY
@@ -32,5 +46,10 @@ OUTPUT FORMAT:
 - No explanations
 - No comments
 
+IMPORTANT:
+If information is missing or ambiguous, INFER reasonable industry-standard defaults.
+NEVER leave any field empty.
+
 Think like an architect writing a document for executives AND engineers.
+
 """
