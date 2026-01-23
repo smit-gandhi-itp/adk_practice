@@ -16,6 +16,7 @@ from .utils import (
     ask_multi_choice,
     run_phase_1_design_engine,
     run_phase_2_clarification_engine,
+    render_phase3_design_to_word,
 )
 
 
@@ -168,6 +169,13 @@ async def main():
     system_design_document = session.state.get("phase_3_system_design", {})
     print("\n=== Final System Design Document Fetched from Session ===")
     print(system_design_document)
+
+    # -----------------
+    # Render System Design Document to Word
+    # -----------------
+    output_word_path = "system_design_document.docx"
+    render_phase3_design_to_word(system_design_document, output_word_path)
+    print(f"✅ System design document rendered to Word: {output_word_path}")
 
     # -----------------
     # Cleanup

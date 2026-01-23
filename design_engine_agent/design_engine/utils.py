@@ -1,3 +1,8 @@
+from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+
 
 # =========================
 # Phase 1 – CLI Helpers
@@ -163,3 +168,192 @@ def run_phase_2_clarification_engine(phase_2_clarification_questions: dict) -> d
         answers[question_text] = selected
 
     return answers
+
+
+# =========================
+# Phase 3
+# =========================
+
+
+
+def render_phase3_design_to_word(system_design: dict, output_path: str):
+
+    doc = Document()
+
+    # -------------------------
+    # Helpers (local)
+    # -------------------------
+    def heading(text, level=1):
+        h = doc.add_heading(text, level)
+        h.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+    def para(text, bold=False):
+        p = doc.add_paragraph()
+        r = p.add_run(text)
+        r.bold = bold
+        r.font.size = Pt(11)
+
+    def bullets(items):
+        for i in items:
+            if i:
+                doc.add_paragraph(str(i), style="List Bullet")
+
+    def table(headers, rows):
+        t = doc.add_table(rows=1, cols=len(headers))
+        t.style = "Table Grid"
+        t.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for i, h in enumerate(headers):
+            t.rows[0].cells[i].text = h
+        for r in rows:
+            cells = t.add_row().cells
+            for i, v in enumerate(r):
+                cells[i].text = str(v)
+
+    # -------------------------
+    # Title
+    # -------------------------
+    title = system_design["executive_summary"]["title"]
+    doc.add_heading(title, 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph("System Design Document").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_page_break()
+
+    # =========================
+    # 1. Executive Summary
+    # =========================
+    heading("1. Executive Summary")
+
+    es = system_design["executive_summary"]
+    para(f"Project Type: {es['project_type']}", bold=True)
+    para(es["purpose"])
+
+    heading("Core Features", 2)
+    bullets(es["core_features"])
+
+    heading("Constraints", 2)
+    bullets(es["constraints"])
+
+    us = es["user_scale"]
+    para(f"User Scale: {us['expected_active_users']} | Concurrent Users: {us['concurrent_users']}")
+
+    # =========================
+    # 2. System Overview
+    # =========================
+    heading("2. System Overview")
+
+    so = system_design["system_overview"]
+
+    heading("Functional Goals", 2)
+    bullets(so["functional_goals"])
+
+    heading("Non-Functional Requirements", 2)
+    bullets(so["non_functional_requirements"])
+
+    heading("Primary User Personas", 2)
+    bullets(so["primary_user_personas"])
+
+    heading("User Flows", 2)
+    for flow in so["user_flows"]:
+        para(flow["name"], bold=True)
+        para(flow["description"])
+        para(f"Entry Points: {', '.join(flow['entry_points'])}")
+        para(f"Success Criteria: {flow['success_criteria']}")
+
+    # =========================
+    # 3. Architecture Design
+    # =========================
+    heading("3. Architecture Design")
+
+    arch = system_design["architecture_design"]
+    para(arch["overview"])
+
+    heading("Components", 2)
+    for c in arch["components"]:
+        para(c["name"], bold=True)
+        para(f"Responsibility: {c['responsibility']}")
+        para(f"Technologies: {', '.join(c['technologies'])}")
+
+    heading("Design Rationale", 2)
+    bullets(arch["rationale"])
+
+    # =========================
+    # 4. Database Design
+    # =========================
+    heading("4. Database Design")
+
+    db = system_design["database_design"]
+    para(f"Database Type: {db['db_type']}")
+    para(db["storage_characteristics"])
+
+    for s in db["schemas"]:
+        heading(f"Table: {s['table_name']}", 3)
+        para(s["description"])
+        table(
+            ["Column", "Type", "Nullable", "Description"],
+            [[c["name"], c["type"], c["nullable"], c["description"]] for c in s["columns"]],
+        )
+
+    # =========================
+    # 5. Security & Compliance
+    # =========================
+    heading("5. Security and Compliance")
+
+    sec = system_design["security_and_compliance"]
+    para(f"Authentication Method: {sec['authentication']['method']}")
+    bullets(sec["authorization"])
+    bullets(sec["encryption"])
+    bullets(sec["compliance"])
+
+    # =========================
+    # 6. Deployment Strategy
+    # =========================
+    heading("6. Deployment Strategy")
+
+    dep = system_design["deployment_strategy"]
+    para(dep["model"])
+    bullets(dep["containerization"])
+    bullets(dep["ci_cd"])
+    bullets(dep["rollout_strategy"])
+
+    # =========================
+    # 7. Scalability & Reliability
+    # =========================
+    heading("7. Scalability and Reliability")
+
+    sr = system_design["scalability_and_reliability"]
+    bullets(sr["load_balancing"])
+    bullets(sr["autoscaling"])
+    bullets(sr["caching_strategy"])
+    bullets(sr["failover_and_dr"])
+
+    # =========================
+    # 8. Cost Estimation
+    # =========================
+    heading("8. Cost and Resource Estimation")
+
+    cost = system_design["cost_and_resource_estimation"]
+    for c in cost["cost_items"]:
+        para(f"{c['name']}: ${c['monthly_estimate_usd']} – {c['rationale']}")
+
+    # =========================
+    # 9. Testing & QA
+    # =========================
+    heading("9. Testing and QA Strategy")
+
+    qa = system_design["testing_and_qa_strategy"]
+    for k, v in qa.items():
+        if k == "acceptance_criteria":
+            continue
+        para(v["name"], bold=True)
+        para(v["scope"])
+        para(f"Tools: {', '.join(v['tools'])}")
+
+    heading("Acceptance Criteria", 2)
+    bullets(qa["acceptance_criteria"])
+
+    # =========================
+    # 10. Appendices
+    # =========================
+    heading("10. Appendices")
+    bullets(system_design["appendices"]["references"])
+
+    doc.save(output_path)

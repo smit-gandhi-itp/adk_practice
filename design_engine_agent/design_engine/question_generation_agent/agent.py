@@ -4,6 +4,7 @@ from dotenv import load_dotenv, find_dotenv
 import os
 from pydantic import BaseModel, field_validator
 from typing import Literal, List, Dict
+from .prompts import AGENT_DESCRIPTION , AGENT_INSTRUCTION
 
 
 load_dotenv(find_dotenv())
@@ -69,35 +70,7 @@ question_generation_agent = LlmAgent(
     name="question_generation_agent",
     model=ollama_llm,
     output_schema=ClarificationQuestions,
-    description=(
-        "Generates clarification questions as multi_choice only. "
-        "The last option is 'Other'. "
-        "Structured JSON output only."
-    ),
-    instruction="""
-You are a clarification question generation agent.
-
-Input: {phase_1_inputs}
-
-Generate only clarification questions as multi_choice. Rules:
-- Each question must be a standalone, human-readable string.
-- Each question must have exactly 6 options.
-- The last option MUST be 'Other'.
-- Options must be clear, mutually exclusive, and realistic.
-- Do NOT repeat input from phase_1_inputs.
-- Output MUST strictly follow the Pydantic schema:
-
-## Sample Template Output
-{
-  "questions": {
-    "Question text here": {
-      "type": "multi_choice",
-      "options": ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5", "Other"]
-    }
-  }
-}
-
-- Output JSON ONLY. No explanations, no markdown, no extra text, Don't include the sample template in the output.
-""",
-output_key="phase_2_clarification_questions",
+    description=AGENT_DESCRIPTION,
+    instruction=AGENT_INSTRUCTION,
+    output_key="phase_2_clarification_questions",
 )

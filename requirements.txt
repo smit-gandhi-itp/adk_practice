@@ -4,3 +4,4 @@ pydantic
 typing_extensions
 aiosqlite
 yfinance
+python-docx
