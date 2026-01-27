@@ -2,9 +2,8 @@ from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from dotenv import load_dotenv, find_dotenv
 import os
-from pydantic import BaseModel, field_validator
-from typing import Literal, List, Dict
 from .prompts import AGENT_DESCRIPTION , AGENT_INSTRUCTION
+from ..schemas import ClarificationQuestions , MultiChoiceQuestion
 
 
 load_dotenv(find_dotenv())
@@ -25,28 +24,6 @@ load_dotenv(find_dotenv())
 #     }
 
 
-# -------------------------
-# Question Shape (ONLY multi_choice)
-# -------------------------
-
-class MultiChoiceQuestion(BaseModel):
-    type: Literal["multi_choice"]
-    options: List[str]
-
-    # @field_validator("options")
-    # @classmethod
-    # def validate_options(cls, options: List[str]):
-    #     if options[-1].lower() != "other":
-    #         raise ValueError('The 6th option must be "Other"')
-    #     return options
-
-
-# -------------------------
-# Final Output Schema
-# -------------------------
-
-class ClarificationQuestions(BaseModel):
-    questions: Dict[str, MultiChoiceQuestion]
 
 
 # -------------------------
@@ -57,8 +34,8 @@ OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "ollama_chat/phi3")
 
 ollama_llm = LiteLlm(
-    model=OLLAMA_MODEL,
-    api_base=OLLAMA_API_BASE,
+    model=OLLAMA_MODEL
+    # api_base=OLLAMA_API_BASE,
 )
 
 

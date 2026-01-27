@@ -17,7 +17,10 @@ from .utils import (
     run_phase_1_design_engine,
     run_phase_2_clarification_engine,
     render_phase3_design_to_word,
+    ask_for_feedback,
+    normalize_phase_2_questions
 )
+from .feedback_agent import feedback_agent
 
 
 # =========================
@@ -106,14 +109,24 @@ async def main():
         session_id=SESSION_ID,
     )
 
-    phase_2_clarification_questions = session.state.get("phase_2_clarification_questions", {})
-    print("\n=== Phase 2 Questions Fetched from Session ===")
-    for k in phase_2_clarification_questions.get("questions", {}).keys():
-        print(f"- {k}")
+    ## FOR GROQ ##
+    raw_phase_2_questions = session.state.get("phase_2_clarification_questions", {} )
+    phase_2_clarification_questions = normalize_phase_2_questions( raw_phase_2_questions )
+
+    ## FOR OLLAMA ##
+    # phase_2_clarification_questions = session.state.get("phase_2_clarification_questions", {})
+    # print("\n=== Phase 2 Questions Fetched from Session ===")
+    # for k in phase_2_clarification_questions.get("questions", {}).keys():
+    #     print(f"- {k}")
+
+    
 
     # -----------------
     # Phase 2: Collect User Answers
     # -----------------
+
+    
+
     phase_2_answers = run_phase_2_clarification_engine(phase_2_clarification_questions)
 
     # Persist Phase 2 Answers into the same session (event-based)
@@ -173,9 +186,79 @@ async def main():
     # -----------------
     # Render System Design Document to Word
     # -----------------
-    output_word_path = "system_design_document2.docx"
+    output_word_path = "system_design_document4.docx"
     render_phase3_design_to_word(system_design_document, output_word_path)
     print(f"✅ System design document rendered to Word: {output_word_path}")
+
+
+    # =========================
+# Phase 4: Human Review & Feedback Loop
+# =========================
+
+    # while True:
+    #     feedback = ask_for_feedback()
+
+    #     # Exit loop if user presses ENTER
+    #     if feedback is None:
+    #         print("✅ No further feedback provided. Finalizing document.")
+    #         break
+
+    #     print("\n🔁 Processing feedback and refining system design...")
+
+    #     # Persist feedback into session
+    #     feedback_event = Event(
+    #         invocation_id=f"phase_4_feedback_{int(time.time() * 1000)}",
+    #         author="user",
+    #         actions=EventActions(
+    #             state_delta={
+    #                 "latest_feedback": feedback,
+    #                 "feedback_received_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    #             }
+    #         ),
+    #         timestamp=time.time(),
+    #     )
+    #     await session_service_stateful.append_event(session, feedback_event)
+
+    #     # Run feedback agent
+    #     feedback_runner = Runner(
+    #         agent=SequentialAgent(
+    #             name="design_engine_feedback",
+    #             sub_agents=[feedback_agent],
+    #         ),
+    #         app_name=APP_NAME,
+    #         session_service=session_service_stateful,
+    #     )
+
+    #     feedback_message = types.Content(
+    #         role="user",
+    #         parts=[types.Part(
+    #             text=(
+    #                 "Refine the existing system design based on the latest user feedback. "
+    #                 "Preserve all correct sections and improve only the requested areas."
+    #             )
+    #         )]
+    #     )
+
+    #     async for event in feedback_runner.run_async(
+    #         user_id=USER_ID,
+    #         session_id=SESSION_ID,
+    #         new_message=feedback_message,
+    #     ):
+    #         if event.is_final_response():
+    #             print("✅ Design updated based on feedback.")
+
+    #     # Fetch updated design
+    #     session = await session_service_stateful.get_session(
+    #         app_name=APP_NAME,
+    #         user_id=USER_ID,
+    #         session_id=SESSION_ID,
+    #     )
+
+    #     system_design_document = session.state.get("phase_3_system_design", {})
+
+    #     # Re-render Word document (overwrite same file)
+    #     render_phase3_design_to_word(system_design_document, output_word_path)
+    #     print(f"📄 Word document updated: {output_word_path}")
 
     # -----------------
     # Cleanup
