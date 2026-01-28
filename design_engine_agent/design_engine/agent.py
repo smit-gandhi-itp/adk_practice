@@ -17,7 +17,7 @@ from .utils import (
     run_phase_1_design_engine,
     run_phase_2_clarification_engine,
     render_phase3_design_to_word,
-    ask_for_feedback,
+    # ask_for_feedback,
     normalize_phase_2_questions
 )
 from .feedback_agent import feedback_agent
@@ -74,6 +74,8 @@ async def main():
     print("\n=== Phase 1 Inputs Collected ===")
     for k, v in phase_1_inputs.items():
         print(f"{k}: {v}")
+
+    Project_Title = phase_1_inputs.get("project_name")
 
     # -----------------
     # Phase 2: Generate Clarification Questions
@@ -181,13 +183,12 @@ async def main():
 
     system_design_document = session.state.get("phase_3_system_design", {})
     print("\n=== Final System Design Document Fetched from Session ===")
-    print(system_design_document)
 
     # -----------------
     # Render System Design Document to Word
     # -----------------
-    output_word_path = "system_design_document4.docx"
-    render_phase3_design_to_word(system_design_document, output_word_path)
+    output_word_path = f"generated_documents/{Project_Title}.docx"
+    render_phase3_design_to_word(system_design_document, output_word_path )
     print(f"✅ System design document rendered to Word: {output_word_path}")
 
 

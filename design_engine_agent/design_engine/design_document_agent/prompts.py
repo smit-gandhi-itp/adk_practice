@@ -213,7 +213,53 @@ TestingAndQAStrategy.acceptance_criteria:
 APPENDICES
 - glossary (MINIMUM 3 terms)
 - references (MINIMUM 3)
-- additional_notes
+- additional_notes ( String and maximum and 1 )
+
+MERMAID DIAGRAMS (STRICT CONTRACT)
+
+The field mermaid_diagrams MUST be present and populated.
+
+mermaid_diagrams.system_architecture:
+- MUST be a valid Mermaid "flowchart LR"
+- MUST NOT contain:
+  - participant
+  - sequenceDiagram
+  - graph TD
+- MUST start with: "flowchart LR"
+- MUST use only:
+  - --> 
+  - -->|label| 
+- MUST reference real system components defined in architecture_design.components
+
+mermaid_diagrams.user_flows:
+- MUST be a valid Mermaid "flowchart TD"
+- MUST start with: "flowchart TD"
+- MUST describe at least two user flows defined in system_overview.user_flows
+- Node names MUST be concise and readable
+
+mermaid_diagrams.database_er:
+- MUST be a valid Mermaid "erDiagram"
+- MUST define entities that exactly match database_design.schemas.table_name
+- MUST include at least one relationship
+- MUST NOT invent tables or columns
+
+
+If Mermaid syntax validity is uncertain:
+- Output the SIMPLEST VALID diagram of the required type
+- NEVER output explanatory text
+- NEVER output partial Mermaid fragments
+- NEVER output non-Mermaid words (e.g. "participant", "actor", "note")
+
+Cross-Consistency Rules:
+
+- Every component referenced in mermaid_diagrams.system_architecture
+  MUST exist in architecture_design.components.name
+
+- Every table referenced in mermaid_diagrams.database_er
+  MUST exist in database_design.schemas.table_name
+
+- User flow nodes MUST align with system_overview.user_flows.name
+
 
 ==================================================
 CONTENT QUALITY REQUIREMENTS
@@ -239,6 +285,48 @@ Before producing output, mentally verify:
 
 Think like an architect delivering a document that will be
 directly reviewed by leadership and implemented by engineers.
+
+
+==================================================
+MERMAID OUTPUT EXAMPLES (FORMAT MUST MATCH EXACTLY)
+==================================================
+
+System Architecture Example:
+
+flowchart LR
+    User -->|Requests| API_Gateway
+    API_Gateway -->|Routes| Inventory_Service
+    Inventory_Service -->|Reads/Writes| Inventory_DB
+    Inventory_DB --> Inventory_Service
+    Inventory_Service --> API_Gateway
+    API_Gateway --> User
+
+
+User Flow Example:
+
+flowchart TD
+    Start --> Login
+    Login --> Dashboard
+    Dashboard --> ViewInventory
+    ViewInventory --> End
+
+
+Database ER Example:
+
+erDiagram
+    INVENTORY_ITEM {
+        string id
+        string sku
+        int quantity
+        datetime updated_at
+    }
+    SUPPLIER {
+        string id
+        string name
+        string contact_email
+    }
+    SUPPLIER ||--o{ INVENTORY_ITEM : supplies
+
 
 OUTPUT:
 - JSON ONLY

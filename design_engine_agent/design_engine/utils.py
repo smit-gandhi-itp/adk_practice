@@ -2,6 +2,9 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+import re
 
 
 # =========================
@@ -423,11 +426,100 @@ def run_phase_2_clarification_engine(phase_2_clarification_questions: dict) -> d
 
 ## FOR GROQ ##
 
+def safe_get(d: dict, path: list, default=None):
+    """
+    Safely access nested dictionaries.
+    Example: safe_get(phase3, ["executive_summary", "title"])
+    """
+    cur = d
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
 
 
+def add_table(doc: Document, headers: list[str], rows: list[list[str]]):
+    table = doc.add_table(rows=1, cols=len(headers))
+    table.style = "Light Grid Accent 1"
+
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(headers):
+        hdr_cells[i].text = h
+
+    for row in rows:
+        row_cells = table.add_row().cells
+        for i, cell in enumerate(row):
+            row_cells[i].text = str(cell)
+
+
+def sanitize_mermaid_output(text: str) -> str | None:
+    if not text or not isinstance(text, str):
+        return None
+
+    lowered = text.lower()
+
+    refusal_markers = [
+        "i can't help",
+        "i cannot help",
+        "sorry",
+        "unable to",
+        "as an ai",
+        "cannot generate"
+    ]
+    if any(marker in lowered for marker in refusal_markers):
+        return None
+
+    # Remove markdown fences
+    text = text.strip()
+    text = re.sub(r"^```[a-zA-Z]*", "", text)
+    text = re.sub(r"```$", "", text)
+
+    lines = text.splitlines()
+    cleaned_lines = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Normalize labeled arrows
+        line = re.sub(
+            r"(.*?)-->\s*\|\s*(.*?)\s*\|\s*(.*)",
+            r"\1-->| \2 | \3",
+            line
+        )
+
+        # Normalize arrow variants
+        line = re.sub(r"-{3,}>", "-->", line)
+        line = re.sub(r"<-{3,}", "<--", line)
+        line = re.sub(r"==>", "-->", line)
+
+        cleaned_lines.append(line)
+
+    if not cleaned_lines:
+        return None
+
+    first = cleaned_lines[0]
+    valid_headers = (
+        "flowchart", "graph", "erDiagram",
+        "sequenceDiagram", "stateDiagram", "classDiagram"
+    )
+
+    if not first.startswith(valid_headers):
+        cleaned_lines.insert(0, "flowchart LR")
+
+    return "\n".join(cleaned_lines)
 
 
 def render_phase3_design_to_word(phase3: dict, output_path: str):
+    """
+    Renders Phase 3 system design to a Word document.
+    diagrams: optional dict containing Mermaid code strings:
+      - diagrams['system_architecture']
+      - diagrams['user_flows']
+      - diagrams['database_er']
+    """
     doc = Document()
 
     def add_heading(text, level=1):
@@ -441,165 +533,336 @@ def render_phase3_design_to_word(phase3: dict, output_path: str):
     # -----------------------------
     # Title
     # -----------------------------
-    add_heading(phase3["executive_summary"]["title"], 0)
+    title = safe_get(phase3, ["executive_summary", "title"], "System Design Document")
+    add_heading(title, 0)
 
     # -----------------------------
     # Executive Summary
     # -----------------------------
-    add_heading("Executive Summary", 1)
-    es = phase3["executive_summary"]
-    add_paragraph(f"Project Type: {es['project_type']}")
-    add_paragraph(f"Purpose: {es['purpose']}", bold=True)
-
-    add_paragraph("Core Features:", bold=True)
-    for f in es["core_features"]:
-        add_paragraph(f"- {f}")
-
-    add_paragraph("Constraints:", bold=True)
-    for c in es["constraints"]:
-        add_paragraph(f"- {c}")
-
-    us = es["user_scale"]
-    add_paragraph(
-        f"User Scale: {us['expected_active_users']} MAU, "
-        f"{us['concurrent_users']} concurrent users"
-    )
+    es = safe_get(phase3, ["executive_summary"], {})
+    if es:
+        add_heading("Executive Summary", 1)
+        add_paragraph(f"Project Type: {es.get('project_type', '')}")
+        add_paragraph(es.get("purpose", ""), bold=True)
+        add_paragraph("Core Features", bold=True)
+        for f in es.get("core_features", []):
+            add_paragraph(f"- {f}")
+        add_paragraph("Constraints", bold=True)
+        for c in es.get("constraints", []):
+            add_paragraph(f"- {c}")
+        us = es.get("user_scale", {})
+        if us:
+            add_paragraph(
+                f"User Scale: {us.get('expected_active_users')} MAU, "
+                f"{us.get('concurrent_users')} concurrent users"
+            )
 
     # -----------------------------
     # System Overview
     # -----------------------------
-    add_heading("System Overview", 1)
-    so = phase3["system_overview"]
-
-    add_paragraph("Functional Goals:", bold=True)
-    for g in so["functional_goals"]:
-        add_paragraph(f"- {g}")
-
-    add_paragraph("Non-Functional Requirements:", bold=True)
-    for nfr in so["non_functional_requirements"]:
-        add_paragraph(f"- {nfr}")
-
-    add_paragraph("Primary User Personas:", bold=True)
-    for p in so["primary_user_personas"]:
-        add_paragraph(f"- {p}")
-
-    add_paragraph("User Flows:", bold=True)
-    for flow in so["user_flows"]:
-        add_paragraph(f"{flow['name']}: {flow['description']}")
-        add_paragraph(f"Entry Points: {', '.join(flow['entry_points'])}")
-        add_paragraph(f"Success Criteria: {flow['success_criteria']}")
+    so = safe_get(phase3, ["system_overview"], {})
+    if so:
+        add_heading("System Overview", 1)
+        for section, items in [
+            ("Functional Goals", so.get("functional_goals", [])),
+            ("Non-Functional Requirements", so.get("non_functional_requirements", [])),
+            ("Primary User Personas", so.get("primary_user_personas", [])),
+        ]:
+            add_paragraph(section, bold=True)
+            for i in items:
+                add_paragraph(f"- {i}")
 
     # -----------------------------
-    # Architecture Design
+    # Architecture Design (TABLE)
     # -----------------------------
-    add_heading("Architecture Design", 1)
-    ad = phase3["architecture_design"]
-    add_paragraph(ad["overview"])
-
-    add_paragraph("Components:", bold=True)
-    for comp in ad["components"]:
-        add_paragraph(comp["name"], bold=True)
-        add_paragraph(f"Responsibility: {comp['responsibility']}")
-        add_paragraph(f"Technologies: {', '.join(comp['technologies'])}")
-        add_paragraph(f"Interfaces: {', '.join(comp['interfaces'])}")
-        add_paragraph(f"Notes: {comp['notes']}")
-
-    add_paragraph("Critical Interactions:", bold=True)
-    for ci in ad["critical_interactions"]:
-        add_paragraph(f"- {ci}")
-
-    add_paragraph("Architecture Rationale:", bold=True)
-    for r in ad["rationale"]:
-        add_paragraph(f"- {r}")
+    ad = safe_get(phase3, ["architecture_design"], {})
+    if ad:
+        add_heading("Architecture Design", 1)
+        add_paragraph(ad.get("overview", ""))
+        components = ad.get("components", [])
+        if components:
+            add_paragraph("System Components", bold=True)
+            rows = []
+            for c in components:
+                rows.append([
+                    c.get("name"),
+                    c.get("responsibility"),
+                    ", ".join(c.get("technologies", [])),
+                    ", ".join(c.get("interfaces", [])),
+                ])
+            add_table(doc, headers=["Component", "Responsibility", "Technologies", "Interfaces"], rows=rows)
 
     # -----------------------------
-    # Database Design
+    # Database Design (TABLE)
     # -----------------------------
-    add_heading("Database Design", 1)
-    db = phase3["database_design"]
-    add_paragraph(f"Database Type: {db['db_type']}")
-    add_paragraph(db["storage_characteristics"])
-
-    for table in db["schemas"]:
-        add_paragraph(f"Table: {table['table_name']}", bold=True)
-        add_paragraph(table["description"])
-        for col in table["columns"]:
-            add_paragraph(
-                f"- {col['name']} ({col['type']}), "
-                f"Nullable: {col['nullable']} – {col['description']}"
-            )
-
-    # -----------------------------
-    # Security & Compliance
-    # -----------------------------
-    add_heading("Security and Compliance", 1)
-    sc = phase3["security_and_compliance"]
-    add_paragraph(f"Auth Method: {sc['authentication']['method']}")
-    add_paragraph(f"Identity Provider: {sc['authentication']['identity_provider']}")
-
-    for a in sc["authorization"]:
-        add_paragraph(f"- {a}")
-
-    for e in sc["encryption"]:
-        add_paragraph(f"- {e}")
+    db = safe_get(phase3, ["database_design"], {})
+    if db:
+        add_heading("Database Design", 1)
+        add_paragraph(f"Database Type: {db.get('db_type')}")
+        add_paragraph(db.get("storage_characteristics", ""))
+        for table in db.get("schemas", []):
+            add_paragraph(f"Table: {table.get('table_name')}", bold=True)
+            rows = []
+            for col in table.get("columns", []):
+                rows.append([
+                    col.get("name"),
+                    col.get("type"),
+                    col.get("nullable"),
+                    col.get("description"),
+                ])
+            add_table(doc, headers=["Column", "Type", "Nullable", "Description"], rows=rows)
 
     # -----------------------------
-    # Deployment
+    # Cost Estimation (TABLE)
     # -----------------------------
-    add_heading("Deployment Strategy", 1)
-    ds = phase3["deployment_strategy"]
-    add_paragraph(f"Model: {ds['model']}")
-    add_paragraph(f"Orchestration: {ds['orchestration']}")
+    ce = safe_get(phase3, ["cost_and_resource_estimation"], {})
+    if ce:
+        add_heading("Cost Estimation", 1)
+        rows = []
+        for c in ce.get("cost_items", []):
+            rows.append([c.get("name"), f"${c.get('monthly_estimate_usd')}", c.get("rationale")])
+        add_table(doc, headers=["Cost Item", "Monthly Cost", "Rationale"], rows=rows)
 
     # -----------------------------
-    # Costs
+    # Testing Strategy
     # -----------------------------
-    add_heading("Cost Estimation", 1)
-    ce = phase3["cost_and_resource_estimation"]
-    for item in ce["cost_items"]:
-        add_paragraph(
-            f"{item['name']}: ${item['monthly_estimate_usd']} – {item['rationale']}"
-        )
-
-    # -----------------------------
-    # Testing
-    # -----------------------------
-    add_heading("Testing and QA", 1)
-    tq = phase3["testing_and_qa_strategy"]
-    for key in ["unit_testing", "integration_testing", "e2e_testing", "load_and_stress", "security_testing"]:
-        t = tq[key]
-        add_paragraph(f"{t['name']} – {t['scope']}")
+    tq = safe_get(phase3, ["testing_and_qa_strategy"], {})
+    if tq:
+        add_heading("Testing & QA Strategy", 1)
+        for key, t in tq.items():
+            if isinstance(t, dict):
+                add_paragraph(f"{t.get('name')} – {t.get('scope')}")
 
     # -----------------------------
     # Appendices
     # -----------------------------
-    add_heading("Appendices", 1)
-    ap = phase3["appendices"]
+    ap = safe_get(phase3, ["appendices"], {})
+    if ap:
+        add_heading("Appendices", 1)
+        glossary = ap.get("glossary", [])
+        if glossary:
+            add_paragraph("Glossary", bold=True)
+            for g in glossary:
+                add_paragraph(f"{g.get('term')}: {g.get('definition')}")
+        refs = ap.get("references", [])
+        if refs:
+            add_paragraph("References", bold=True)
+            for r in refs:
+                add_paragraph(r)
+        notes = ap.get("additional_notes")
+        if notes:
+            add_paragraph(notes)
 
-    add_paragraph("Glossary:", bold=True)
-    for g in ap["glossary"]:
-        add_paragraph(f"{g['term']}: {g['definition']}")
-
-    add_paragraph("References:", bold=True)
-    for r in ap["references"]:
-        add_paragraph(r)
-
-    add_paragraph(ap["additional_notes"])
+    # -----------------------------
+    # Phase 3 Diagrams (NEW)
+    # -----------------------------
+    md = safe_get(phase3, ["mermaid_diagrams"], {})
+    if md:
+        add_heading("System Architecture & Diagrams", 1)
+        if md.get("system_architecture"):
+            add_paragraph("System Architecture Diagram (Mermaid Code):", bold=True)
+            add_paragraph(sanitize_mermaid_output(md["system_architecture"]))
+        if md.get("user_flows"):
+            add_paragraph("User Flow Diagram (Mermaid Code):", bold=True)
+            add_paragraph(sanitize_mermaid_output(md["user_flows"]))
+        if md.get("database_er"):
+            add_paragraph("Database ER Diagram (Mermaid Code):", bold=True)
+            add_paragraph(sanitize_mermaid_output(md["database_er"]))
 
     doc.save(output_path)
 
-# =========================
-# Phase 4
-# =========================
 
-def ask_for_feedback() -> str | None:
-    print("\n======================================")
-    print(" Review Generated System Design ")
-    print("======================================")
-    print(
-        "Please review the generated Word document.\n"
-        "Enter feedback to refine the design.\n"
-        "Press ENTER without typing anything to finalize."
-    )
-    feedback = input("> ").strip()
-    return feedback if feedback else None
+
+
+## old ##
+
+# def render_phase3_design_to_word(phase3: dict, output_path: str):
+#     doc = Document()
+
+#     def add_heading(text, level=1):
+#         doc.add_heading(text, level=level)
+
+#     def add_paragraph(text, bold=False):
+#         p = doc.add_paragraph()
+#         run = p.add_run(text)
+#         run.bold = bold
+
+#     # -----------------------------
+#     # Title
+#     # -----------------------------
+#     title = safe_get(phase3, ["executive_summary", "title"], "System Design Document")
+#     add_heading(title, 0)
+
+#     # =============================
+#     # Executive Summary
+#     # =============================
+#     es = safe_get(phase3, ["executive_summary"], {})
+#     if es:
+#         add_heading("Executive Summary", 1)
+#         add_paragraph(f"Project Type: {es.get('project_type', '')}")
+#         add_paragraph(es.get("purpose", ""), bold=True)
+
+#         add_paragraph("Core Features", bold=True)
+#         for f in es.get("core_features", []):
+#             add_paragraph(f"- {f}")
+
+#         add_paragraph("Constraints", bold=True)
+#         for c in es.get("constraints", []):
+#             add_paragraph(f"- {c}")
+
+#         us = es.get("user_scale", {})
+#         if us:
+#             add_paragraph(
+#                 f"User Scale: {us.get('expected_active_users')} MAU, "
+#                 f"{us.get('concurrent_users')} concurrent users"
+#             )
+
+#     # =============================
+#     # System Overview
+#     # =============================
+#     so = safe_get(phase3, ["system_overview"], {})
+#     if so:
+#         add_heading("System Overview", 1)
+
+#         for section, items in [
+#             ("Functional Goals", so.get("functional_goals", [])),
+#             ("Non-Functional Requirements", so.get("non_functional_requirements", [])),
+#             ("Primary User Personas", so.get("primary_user_personas", [])),
+#         ]:
+#             add_paragraph(section, bold=True)
+#             for i in items:
+#                 add_paragraph(f"- {i}")
+
+#     # =============================
+#     # Architecture Design (TABLE)
+#     # =============================
+#     ad = safe_get(phase3, ["architecture_design"], {})
+#     if ad:
+#         add_heading("Architecture Design", 1)
+#         add_paragraph(ad.get("overview", ""))
+
+#         components = ad.get("components", [])
+#         if components:
+#             add_paragraph("System Components", bold=True)
+#             rows = []
+#             for c in components:
+#                 rows.append([
+#                     c.get("name"),
+#                     c.get("responsibility"),
+#                     ", ".join(c.get("technologies", [])),
+#                     ", ".join(c.get("interfaces", [])),
+#                 ])
+
+#             add_table(
+#                 doc,
+#                 headers=["Component", "Responsibility", "Technologies", "Interfaces"],
+#                 rows=rows
+#             )
+
+#     # =============================
+#     # Database Design (TABLE)
+#     # =============================
+#     db = safe_get(phase3, ["database_design"], {})
+#     if db:
+#         add_heading("Database Design", 1)
+#         add_paragraph(f"Database Type: {db.get('db_type')}")
+#         add_paragraph(db.get("storage_characteristics", ""))
+
+#         for table in db.get("schemas", []):
+#             add_paragraph(f"Table: {table.get('table_name')}", bold=True)
+#             rows = []
+#             for col in table.get("columns", []):
+#                 rows.append([
+#                     col.get("name"),
+#                     col.get("type"),
+#                     col.get("nullable"),
+#                     col.get("description"),
+#                 ])
+
+#             add_table(
+#                 doc,
+#                 headers=["Column", "Type", "Nullable", "Description"],
+#                 rows=rows
+#             )
+
+#     # =============================
+#     # Cost Estimation (TABLE)
+#     # =============================
+#     ce = safe_get(phase3, ["cost_and_resource_estimation"], {})
+#     if ce:
+#         add_heading("Cost Estimation", 1)
+#         rows = []
+#         for c in ce.get("cost_items", []):
+#             rows.append([
+#                 c.get("name"),
+#                 f"${c.get('monthly_estimate_usd')}",
+#                 c.get("rationale"),
+#             ])
+
+#         add_table(
+#             doc,
+#             headers=["Cost Item", "Monthly Cost", "Rationale"],
+#             rows=rows
+#         )
+
+#     # =============================
+#     # Testing Strategy
+#     # =============================
+#     tq = safe_get(phase3, ["testing_and_qa_strategy"], {})
+#     if tq:
+#         add_heading("Testing & QA Strategy", 1)
+#         for key, t in tq.items():
+#             if isinstance(t, dict):
+#                 add_paragraph(f"{t.get('name')} – {t.get('scope')}")
+
+#     # =============================
+#     # Appendices
+#     # =============================
+#     ap = safe_get(phase3, ["appendices"], {})
+#     if ap:
+#         add_heading("Appendices", 1)
+
+#         glossary = ap.get("glossary", [])
+#         if glossary:
+#             add_paragraph("Glossary", bold=True)
+#             for g in glossary:
+#                 add_paragraph(f"{g.get('term')}: {g.get('definition')}")
+
+#         refs = ap.get("references", [])
+#         if refs:
+#             add_paragraph("References", bold=True)
+#             for r in refs:
+#                 add_paragraph(r)
+
+#         notes = ap.get("additional_notes")
+#         if notes:
+#             add_paragraph(notes)
+
+#     doc.save(output_path)
+
+
+
+
+
+
+
+
+
+
+
+
+# # =========================
+# # Phase 4
+# # =========================
+
+# def ask_for_feedback() -> str | None:
+#     print("\n======================================")
+#     print(" Review Generated System Design ")
+#     print("======================================")
+#     print(
+#         "Please review the generated Word document.\n"
+#         "Enter feedback to refine the design.\n"
+#         "Press ENTER without typing anything to finalize."
+#     )
+#     feedback = input("> ").strip()
+#     return feedback if feedback else None

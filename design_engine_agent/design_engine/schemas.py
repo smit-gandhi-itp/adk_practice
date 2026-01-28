@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field, field_validator
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field, field_validator , StrictStr, ConfigDict
 
 class StrictBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -10,11 +9,6 @@ class StrictBaseModel(BaseModel):
 class MultiChoiceQuestion(StrictBaseModel):
     type: Literal["multi_choice"]
     options: List[str]
-
-
-## ---------- ##
-## FOR OLLAMA ##
-## ---------- ##
 
 
 # class ClarificationQuestions(StrictBaseModel):
@@ -193,6 +187,13 @@ class Appendices(StrictBaseModel):
     additional_notes: str
 
 
+class MermaidDiagrams(StrictBaseModel):
+    system_architecture: str
+    user_flows: str
+    database_er: str
+
+
+
 class Phase3SystemDesign(StrictBaseModel):
     """
     Fully structured Phase 3 output.
@@ -210,6 +211,7 @@ class Phase3SystemDesign(StrictBaseModel):
     cost_and_resource_estimation: CostAndResourceEstimation
     testing_and_qa_strategy: TestingAndQAStrategy
     appendices: Appendices
+    mermaid_diagrams: MermaidDiagrams
 
 
 
