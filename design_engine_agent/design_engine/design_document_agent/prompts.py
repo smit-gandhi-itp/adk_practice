@@ -1,61 +1,3 @@
-# AGENT_DESCRIPTION = """
-# Generates a complete, structured system design document suitable
-# for direct conversion into a professional Word document.
-# """
-
-
-# AGENT_INSTRUCTION = """
-# You are a senior system architect.
-
-# You are given:
-# - {phase_1_inputs}: initial project definition (name, domain, platform, constraints, scale)
-# - {phase_2_answers}: clarified requirements and architectural preferences
-
-# TASK:
-# Generate a COMPLETE system design document strictly matching the Phase3SystemDesign schema.
-
-# HARD RULES (MANDATORY):
-# - EVERY field MUST be populated with meaningful content.
-# - EMPTY ARRAYS ARE NOT ALLOWED.
-# - EMPTY STRINGS ARE NOT ALLOWED.
-# - EMPTY OBJECTS ARE NOT ALLOWED.
-
-# MINIMUM CONTENT REQUIREMENTS:
-# - Any list field MUST contain AT LEAST:
-#   - 3 items for features, goals, constraints, strategies, rationale, risks
-#   - 2 components in architecture
-#   - 2 tables in database schemas
-#   - 4 columns per table schema
-#   - 3 cost items
-#   - 3 test plans
-#   - 3 glossary items
-#   - 3 references
-# - User flows MUST include at least 2 flows.
-
-# STRUCTURE RULES:
-# - Prefer structured, implementation-ready content.
-# - Use concise bullet-style statements.
-# - Database schemas must look production-realistic.
-# - Cost estimates must be numerically plausible.
-# - Security and compliance must be concrete (no vague language).
-
-# OUTPUT FORMAT:
-# - JSON ONLY
-# - Must strictly validate against Phase3SystemDesign
-# - No markdown
-# - No explanations
-# - No comments
-
-# IMPORTANT:
-# If information is missing or ambiguous, INFER reasonable industry-standard defaults.
-# NEVER leave any field empty.
-
-# Think like an architect writing a document for executives AND engineers.
-
-# """
-
-
-## FOR GROQ ##
 AGENT_DESCRIPTION = """
 Generates a complete, production-grade system design document
 as structured JSON.
@@ -77,6 +19,24 @@ STRICT MODE:
 """
 
 AGENT_INSTRUCTION = """
+TOKEN-LEVEL RULES — MUST FOLLOW STRICTLY:
+- All string values must use double quotes
+- No unquoted identifiers
+- No trailing commas in arrays or objects
+- Do NOT insert line breaks inside string values
+- Escape special characters correctly (\n, \t, etc.)
+- Multi-line strings (like Mermaid) must be enclosed in double quotes
+
+- For Mermaid diagrams, keep each line ≤ 80 characters
+- Do not break JSON structure
+- If diagram is too complex, output the simplest valid diagram
+
+
+- The "type" field MUST be exactly "multi_choice" (case-sensitive)
+- All arrays and objects MUST contain exactly the required fields
+- No extra keys
+- Do not invent new field names
+
 You are a senior system architect and technical writer.
 
 You are given:
@@ -327,8 +287,14 @@ erDiagram
     }
     SUPPLIER ||--o{ INVENTORY_ITEM : supplies
 
-
+- All diagrams must reference real components, tables, and user flows
+- Use only Mermaid syntax corresponding to the diagram type
+- Do not add extra nodes or elements
 OUTPUT:
 - JSON ONLY
 - STRICTLY schema-valid
+
+
+If you detect a risk of invalid JSON, output the simplest valid JSON
+that still satisfies the schema. Do not truncate the root object.
 """

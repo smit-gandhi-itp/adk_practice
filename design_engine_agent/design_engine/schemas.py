@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field, field_validator , StrictStr, ConfigDict
+from pydantic import BaseModel, Field,  ConfigDict
 
 class StrictBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -10,14 +10,6 @@ class MultiChoiceQuestion(StrictBaseModel):
     type: Literal["multi_choice"]
     options: List[str]
 
-
-# class ClarificationQuestions(StrictBaseModel):
-#     questions: Dict[str, MultiChoiceQuestion]
-
-
-## ---------- ##
-## FOR GROQ ##
-## ---------- ##
 
 class ClarificationQuestionItem(StrictBaseModel):
     question_text: str
@@ -121,7 +113,7 @@ class DeploymentStrategy(StrictBaseModel):
     orchestration: str
     ci_cd: List[str]
     rollout_strategy: List[str]
-    infra_as_code: str
+    infra_as_code: str | List[str]
 
 class SloSlaTarget(StrictBaseModel):
     metric: str

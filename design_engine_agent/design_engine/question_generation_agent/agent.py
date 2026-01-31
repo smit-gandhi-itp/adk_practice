@@ -3,6 +3,7 @@ from google.adk.models.lite_llm import LiteLlm
 from dotenv import load_dotenv, find_dotenv
 import os
 from .prompts import AGENT_DESCRIPTION , AGENT_INSTRUCTION
+from ..utils import generate_content_config
 from ..schemas import ClarificationQuestions , MultiChoiceQuestion
 
 
@@ -40,7 +41,7 @@ ollama_llm = LiteLlm(
 
 
 # -------------------------
-# Question Generation Agent
+# Question Generation Agent ( for CLI )
 # -------------------------
 
 question_generation_agent = LlmAgent(
@@ -50,4 +51,19 @@ question_generation_agent = LlmAgent(
     description=AGENT_DESCRIPTION,
     instruction=AGENT_INSTRUCTION,
     output_key="phase_2_clarification_questions",
+    generate_content_config = generate_content_config
+)
+
+
+## FOR APP
+
+def create_question_generation_agent():
+    return LlmAgent(
+    name="question_generation_agent",
+    model=ollama_llm,
+    output_schema=ClarificationQuestions,
+    description=AGENT_DESCRIPTION,
+    instruction=AGENT_INSTRUCTION,
+    output_key="phase_2_clarification_questions",
+    generate_content_config = generate_content_config
 )

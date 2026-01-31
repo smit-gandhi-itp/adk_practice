@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from .prompts import AGENT_DESCRIPTION , AGENT_INSTRUCTION
 from ..schemas import *
+from ..utils import generate_content_config
 
 
 
@@ -35,7 +36,7 @@ ollama_llm = LiteLlm(
 
 
 # ==================================================
-# Phase 3 System Design Agent
+# Phase 3 System Design Agent ( for CLI )
 # ==================================================
 
 design_document_agent = LlmAgent(
@@ -44,9 +45,20 @@ design_document_agent = LlmAgent(
     output_schema=Phase3SystemDesign,
     description=AGENT_DESCRIPTION,
     instruction=AGENT_INSTRUCTION,
-    output_key="phase_3_system_design"
+    output_key="phase_3_system_design",
+    generate_content_config = generate_content_config
 )
 
-# ==================================================
-# End of file
-# ==================================================
+
+## For app
+
+def create_design_document_agent():
+    return LlmAgent(
+        name="design_document_agent",
+        model=ollama_llm,
+        output_schema=Phase3SystemDesign,
+        description=AGENT_DESCRIPTION,
+        instruction=AGENT_INSTRUCTION,
+        output_key="phase_3_system_design",
+        generate_content_config=generate_content_config
+    )

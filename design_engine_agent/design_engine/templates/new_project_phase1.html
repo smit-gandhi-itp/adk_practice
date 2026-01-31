@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>New Project - Phase 1</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/new_project.css') }}">
+</head>
+<body>
+    <h1>Create New Project</h1>
+    <form method="POST" action="/new-project-phase1">
+        <label>Project Name:</label><br>
+        <input type="text" name="project_name" required><br><br>
+
+        <label>Project Type:</label><br>
+        <select name="project_type" required>
+            <option>Web Application</option>
+            <option>Mobile Application</option>
+            <option>Backend Service</option>
+            <option>Data Platform</option>
+            <option>ML / AI System</option>
+            <option>Internal Tool</option>
+        </select><br><br>
+
+        <label>Primary Platform:</label><br>
+        <select name="platform" required>
+            <option>Web</option>
+            <option>Mobile</option>
+            <option>Backend / API</option>
+            <option>Data / Analytics</option>
+            <option>Mixed</option>
+        </select><br><br>
+
+        <label>Description:</label><br>
+        <textarea name="description" rows="3" cols="50" required></textarea><br><br>
+
+        <label>Core Features (comma separated):</label><br>
+        <input type="text" name="core_features"><br><br>
+
+        <label>Expected User Scale:</label><br>
+        <select name="expected_user_scale" required>
+            <option>Prototype / Internal</option>
+            <option>Up to 10k users</option>
+            <option>10k - 100k users</option>
+            <option>100k - 1M users</option>
+            <option>1M+ users</option>
+        </select><br><br>
+
+        <label>Constraints:</label><br>
+        <input type="checkbox" name="constraints" value="Performance"> Performance<br>
+        <input type="checkbox" name="constraints" value="Cost"> Cost<br>
+        <input type="checkbox" name="constraints" value="Security"> Security<br>
+        <input type="checkbox" name="constraints" value="Compliance"> Compliance<br>
+        <input type="checkbox" name="constraints" value="Time-to-market"> Time-to-market<br>
+        <input type="checkbox" name="constraints" value="Scalability"> Scalability<br><br>
+        <button type="submit">Submit Phase 1</button>
+    </form>
+</body>
+</html>

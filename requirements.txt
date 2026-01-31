@@ -5,3 +5,9 @@ typing_extensions
 aiosqlite
 yfinance
 python-docx
+fastapi[standard]
+uvicorn[standard]
+jinja2
+python-multipart
+pdfitdown
+docx2pdf

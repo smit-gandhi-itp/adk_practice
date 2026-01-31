@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Phase 2 Questions</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/phase2.css') }}">
+</head>
+<body>
+    <div class="phase-container">
+        <!-- Step / progress -->
+        <h3>Question {{ step }} of {{ total }}</h3>
+
+        <form method="post">
+            <!-- Question text -->
+            <div class="question-block">
+                <p><strong>{{ question }}</strong></p>
+
+                <!-- Options -->
+                {% for option in options %}
+                    <div class="option">
+                        <input type="checkbox" name="answers" value="{{ option }}">
+                        <span>{{ option }}</span>
+                    </div>
+                {% endfor %}
+
+                <!-- Optional "Other" input -->
+                {% if "Other" in options %}
+                    <div class="option">
+                        <input type="text" name="other_text" placeholder="Other (optional)" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; margin-top: 10px;">
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="submit">
+                {% if is_last %}Finish Phase 2{% else %}Next{% endif %}
+            </button>
+        </form>
+    </div>
+</body>
+</html>

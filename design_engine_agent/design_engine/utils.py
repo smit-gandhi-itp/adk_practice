@@ -5,6 +5,113 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import re
+from pdfitdown.pdfconversion import Converter
+import builtins
+from google.genai import types
+
+
+generate_content_config = types.GenerateContentConfig(
+    # 🔒 Enforce machine-readable output
+    response_mime_type="application/json",
+
+    # 🎯 Deterministic output (best for schemas)
+    temperature=0.0,
+
+
+    # 🚫 Reduce refusals / partial responses
+    safety_settings=[
+        types.SafetySetting(
+            category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold=types.HarmBlockThreshold.OFF,
+        ),
+        types.SafetySetting(
+            category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold=types.HarmBlockThreshold.OFF,
+        ),
+        types.SafetySetting(
+            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold=types.HarmBlockThreshold.OFF,
+        ),
+        types.SafetySetting(
+            category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold=types.HarmBlockThreshold.OFF,
+        ),
+    ],
+)
+
+
+def build_new_message_phase2(is_retry: bool = False):
+    base_prompt = (
+        "Based on Phase 1 inputs, generate clarification questions "
+        "to finalize the system design."
+    )
+
+    if is_retry:
+        base_prompt += (
+            "\n\nIMPORTANT INSTRUCTIONS:\n"
+            "- Output MUST be strictly valid JSON\n"
+            "- Do NOT include markdown\n"
+            "- Do NOT include mermaid diagrams\n"
+            "- Escape all special characters\n"
+            "- Follow the schema exactly\n"
+            "- No explanatory text outside JSON"
+        )
+
+
+    return types.Content(
+        role="user",
+        parts=[types.Part(text=base_prompt)]
+    )
+
+def build_new_message_phase3(is_retry: bool = False):
+    base_prompt = (
+        "Using all available session context, generate the COMPLETE Phase 3 "
+        "system design document.\n\n"
+
+        "ABSOLUTE OUTPUT RULES (NON-NEGOTIABLE):\n"
+        "- Output JSON ONLY\n"
+        "- Use double quotes for ALL strings\n"
+        "- No markdown, no comments, no explanations\n"
+        "- No trailing commas in objects or arrays\n"
+        "- No missing keys, no extra keys\n"
+        "- No nulls, no empty strings, no empty arrays, no empty objects\n"
+        "- Escape all special characters correctly (\\n, \\t, \\\")\n"
+        "- Do NOT split or truncate the root JSON object\n\n"
+
+        "SCHEMA ENFORCEMENT:\n"
+        "- The output MUST validate against Phase3SystemDesign\n"
+        "- Every required field MUST be present and populated\n"
+        "- Infer realistic defaults if information is missing\n"
+        "- Do NOT invent new field names\n\n"
+
+        "MERMAID RULES:\n"
+        "- Mermaid diagrams MUST be valid strings inside JSON\n"
+        "- Keep Mermaid diagrams SIMPLE and MINIMAL\n"
+        "- Each Mermaid line must be ≤ 80 characters\n"
+        "- If unsure, output the SIMPLEST valid diagram of the required type\n"
+        "- Do NOT include invalid Mermaid keywords\n\n"
+
+        "FINAL CHECK BEFORE OUTPUT:\n"
+        "- Verify JSON syntax correctness\n"
+        "- Verify schema compliance mentally\n"
+        "- Ensure the response can be parsed by a strict JSON parser\n"
+    )
+
+    if is_retry:
+        base_prompt += (
+            "\n\n⚠️ RETRY MODE (STRICT REPAIR MODE ENABLED):\n"
+            "- Previous output failed JSON or schema validation\n"
+            "- PRIORITIZE correctness over verbosity\n"
+            "- Output the SIMPLEST possible JSON that fully satisfies the schema\n"
+            "- Reduce diagram complexity if needed\n"
+            "- Do NOT repeat previous mistakes\n"
+            "- Do NOT include Mermaid diagrams if they risk JSON validity\n"
+        )
+
+    return types.Content(
+        role="user",
+        parts=[types.Part(text=base_prompt)]
+    )
 
 
 # =========================
@@ -866,3 +973,28 @@ def render_phase3_design_to_word(phase3: dict, output_path: str):
 #     )
 #     feedback = input("> ").strip()
 #     return feedback if feedback else None
+
+
+
+
+converter = Converter()
+
+def convert_docx_to_pdf(word_file_path: str, pdf_file_path: str):
+    # Patch open() for utf-8 safety (as required by pdfitdown)
+    orig_open = builtins.open
+
+    def open_utf8(file, mode='r', *args, **kwargs):
+        if 'b' not in mode:
+            kwargs['encoding'] = 'utf-8'
+        return orig_open(file, mode, *args, **kwargs)
+
+    builtins.open = open_utf8
+
+    try:
+        converter.convert(
+            file_path=word_file_path,
+            output_path=pdf_file_path
+        )
+        print(f"✅ PDF generated: {pdf_file_path}")
+    finally:
+        builtins.open = orig_open
